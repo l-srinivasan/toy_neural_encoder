@@ -53,5 +53,5 @@ def train_tcn(x):
     # Freeze weights
     for param in tcn.parameters():
         param.requires_grad = False
-    return tcn
+    return x, tcn
     

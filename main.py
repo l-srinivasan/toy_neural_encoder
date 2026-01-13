@@ -1,10 +1,8 @@
-import os
 import numpy as np
-import pandas as pd
+import torch
 
 from signal_utils import generate_synthetic_features, Signal
-from models import ThreeLayerTCN
-from train import train_tcn
+import train_funcs, eval_funcs
 
 def main():
 
@@ -15,24 +13,30 @@ def main():
     fs = 500
     t = np.arange(1000) / fs
 
-
+    # Create across feature engineered bands or restrict to one band
     if not single_band:
         data = generate_synthetic_features(num_elec, timesteps, fs)
     else: # Restrict to one band
         f = 50 # Sitting in the middle of low-gamma
-        raw_data = np.sin(2 * np.pi * f * t) + 0.5 * np.random.randn(num_elec, len(t))
+        num_channels = num_elec * 4 # Since we are not feeding each band in
+        raw_data = np.sin(2 * np.pi * f * t) + 0.5 * np.random.randn(num_channels, len(t))
 
         # Call Signal class, normalize and bandpass
         sig = Signal(
             raw_data, 
             fs=600, 
-            name="TestSignal"
+            name="SynthSignal"
         )
         sig.normalize()
         sig.bandpass_filter(band="lower_gamma")
         data = sig.data
 
-    tcn = train_tcn(data)
+    # Train the TCN to predict the next timestep
+    check_latent = False
+    x, tcn_trained = train_funcs.train_tcn(data)
+    torch.save(tcn_trained.state_dict(), "tcn_frozen.pth")
+    if check_latent:
+        eval_funcs.check_latent_tcn(x, tcn_trained)
 
 if __name__ == "__main__":
     main()
