@@ -1,0 +1,21 @@
+name: ml
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26.4
+  - scipy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - jupyterlab
+
+  - pip:
+      - torch==2.2.2
+      - torchvision==0.17.2
+      - torchaudio==2.2.2
