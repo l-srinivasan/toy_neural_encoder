@@ -15,13 +15,14 @@ class Signal():
         # Vectorized normalization, safe for std=0
         self.data = (self.data - mu) / (std + epsilon)
 
-    def bandpass_filter(self, band="high_gamma"):
+    def bandpass_filter(self, band="lower_gamma"):
 
         # Identify bands of interest
         bands = {
             "low": (1, 8),
             "mu": (8, 13),
             "beta": (13, 30),
+            "lower_gamma": (30, 70),
             "high_gamma": (70, 200)
         }
         low, high = bands[band]

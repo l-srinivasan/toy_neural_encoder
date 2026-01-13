@@ -12,58 +12,64 @@ torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 torch.backends.mkldnn.enabled = True
 
-class Dummy(nn.Module):
-    def forward(self, x):
-        return x
-    
-class TemporalConvNet(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, dil_size):
+class ThreeLayerTCN(nn.Module):
+    def __init__(
+            self,
+            in_channels, # Electrodes x 
+            hidden_channels,
+            out_channels, # Should be 128 for the Transformer
+            kernel_size=3,
+            dilations = [1,2,4]
+    ):
         super().__init__()
-    
-        padding = (kernel_size-1) // (2*dil_size)
-        self.conv = nn.Conv1d(
+
+        self.conv1 = nn.Conv1d(
             in_channels,
+            hidden_channels,
+            kernel_size,
+            padding = ((kernel_size - 1) * dilations[0]) // 2,
+            dilation = dilations[0]
+        )
+
+        self.conv2 = nn.Conv1d(
+            hidden_channels,
+            hidden_channels,
+            kernel_size,
+            padding = ((kernel_size - 1) * dilations[1]) // 2,
+            dilation = dilations[1]
+        )
+
+        self.conv3 = nn.Conv1d(
+            hidden_channels,
             out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            dilation=dil_size,
-            padding=padding
+            kernel_size,
+            padding = ((kernel_size - 1) * dilations[2]) // 2,
+            dilation = dilations[2]
         )
 
-        self.ln = nn.LayerNorm(out_channels)
+        self.ln1 = nn.LayerNorm(hidden_channels)
+        self.ln2 = nn.LayerNorm(hidden_channels)
+        self.ln3 = nn.LayerNorm(out_channels)
+
         self.act = nn.ReLU()
-
-    def forward(self, x):
-        print(f"Before Conv1d: {x.shape}")
-        x = self.conv(x)
-        x = x.transpose(1,2) # Transpose for LayerNorm
-        x = self.ln(x)
-        x = self.act(x)
-        return x
     
-"""
-Transformer learns
-- Which timesteps matter more
-- Which patterns repeat
-- Which events contextualize others
-- How to integrate long-range context
-"""
-class TimeSeriesTransformer(nn.Module):
-    def __init__(self, d_model, num_heads, num_layers):
-        super().__init__()
-
-        layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead = num_heads,
-            dim_feedforward = 4 * d_model, # Standard
-            batch_first=False
-        )
-
-        self.encoder = nn.TransformerEncoder(
-            layer,
-            num_layers=num_layers
-        )
-
     def forward(self, x):
-        x = x.unsqueeze(1)
-        return self.encoder(x)
+        
+        # Input dimension for x: [Batches, Channels, Timesteps]
+        x = self.conv1(x)
+        x = x.transpose(1,2)
+        x = self.act(self.ln1(x)) # LayerNorm expects [B,T,C] here
+        x = x.transpose(1,2)
+
+        x = self.conv2(x)
+        x = x.transpose(1,2)
+        x = self.act(self.ln2(x)) # LayerNorm expects [B,T,C] here
+        x = x.transpose(1,2)
+
+        x = self.conv3(x)
+        x = x.transpose(1,2)
+        x = self.act(self.ln3(x)) # LayerNorm expects [B,T,C] here
+
+        return x # In [Batches, Timesteps, out_channels]
+
+
