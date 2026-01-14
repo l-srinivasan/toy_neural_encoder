@@ -36,7 +36,8 @@ def main():
     x, tcn_trained = train_funcs.train_tcn(data)
     torch.save(tcn_trained.state_dict(), "tcn_frozen.pth")
     if check_latent:
-        eval_funcs.check_latent_tcn(x, tcn_trained)
+        eval_funcs.check_latent_feature(x, tcn_trained)
+        eval_funcs.check_heatmap(x, tcn_trained)
 
 if __name__ == "__main__":
     main()

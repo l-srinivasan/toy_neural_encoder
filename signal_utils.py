@@ -86,4 +86,12 @@ def generate_synthetic_features(
     x = (x - x.mean(axis=1, keepdims=True)) / x.std(axis=1, keepdims=True)
     return x
 
+def event_driven_changes():
+
+    """
+    Docstring for event_driven_changes
+
+    ** Could introduce events to test latent feature variation over time
+    """
+    pass
     
