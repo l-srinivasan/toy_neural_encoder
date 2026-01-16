@@ -39,5 +39,8 @@ def main():
         eval_funcs.check_latent_feature(x, tcn_trained)
         eval_funcs.check_heatmap(x, tcn_trained)
 
+    print(latent_features.shape)
+
+
 if __name__ == "__main__":
     main()

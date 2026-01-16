@@ -1,16 +1,8 @@
 import os
 
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-# Limit PyTorch threads to prevent deadlocks, disable problematic backends
-torch.set_num_threads(1)
-torch.set_num_interop_threads(1)
-torch.backends.mkldnn.enabled = True
 
 class ThreeLayerTCN(nn.Module):
     def __init__(
@@ -73,3 +65,45 @@ class ThreeLayerTCN(nn.Module):
         return x # In [Batches, Timesteps, out_channels]
 
 
+class TimeSeriesTransformer(nn.Module):
+    def __init__(self, 
+        trained_tcn, 
+        d_model=128, 
+        timesteps=1000,
+        nhead=4,
+        num_layers=4,
+        dim_feedforward=512,
+        dropout=0.1
+    ):
+        super().__init__()
+
+        self.tcn = trained_tcn
+        self.tcn.eval()
+        for param in self.tcn.parameters():
+            param.requires_grad = False # Prevent from further learning
+
+        self.pos_embedding = nn.Embedding(timesteps, d_model)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            batch_first=True
+        )
+
+        self.transformer_encoder=nn.TransformerEncoder(encoder_layer, 
+            num_layers=num_layers
+        )
+
+    def forward(self, x):
+
+        with torch.no_grad():
+            z = self.tcn(x)
+
+        B, C, T = x.shape
+        position_indices = torch.arange(T).unsqueeze(0).expand(B,T) # Repeat the row B times
+        embed_from_idx = self.pos_embedding(position_indices)
+        z = z + embed_from_idx # Need to understand how to add positions like this
+        
+        encoding = self.transformer_encoder(z)
+        return encoding
