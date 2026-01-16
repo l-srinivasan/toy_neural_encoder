@@ -32,15 +32,26 @@ def main():
         data = sig.data
 
     # Train the TCN to predict the next timestep
-    check_latent = False
-    x, tcn_trained = train_funcs.train_tcn(data)
-    torch.save(tcn_trained.state_dict(), "tcn_frozen.pth")
-    if check_latent:
-        eval_funcs.check_latent_feature(x, tcn_trained)
-        eval_funcs.check_heatmap(x, tcn_trained)
+    load_tcn = True
+    tcn_path =  "tcn_frozen.pth"
+    x_path = "x_tensor.pth"
 
-    print(latent_features.shape)
+    if load_tcn:
+        tcn_trained = eval_funcs.load_trained_tcn_weights(tcn_path)
+        x = torch.load(x_path, weights_only=True)
 
+    else:
+        x, tcn_trained = train_funcs.train_tcn(data)
+        torch.save(tcn_trained.state_dict(), tcn_path)
+        torch.save(x, x_path)
+
+        check_latent = False
+        if check_latent:
+            eval_funcs.check_latent_feature(x, tcn_trained)
+            eval_funcs.check_heatmap(x, tcn_trained)
+
+    # Train the Transformer to predict the next latent
+    tf_trained = train_funcs.train_transformer(x, tcn_trained)
 
 if __name__ == "__main__":
     main()

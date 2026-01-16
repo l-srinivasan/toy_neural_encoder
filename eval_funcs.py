@@ -3,6 +3,16 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 
+from models import ThreeLayerTCN
+
+def load_trained_tcn_weights(path):
+
+    tcn = ThreeLayerTCN(64, 128, 128)
+    state_dict = torch.load(path, weights_only=True)
+    tcn.load_state_dict(state_dict)
+    return tcn
+
+
 def check_latent_feature(x, tcn_trained):
 
     """

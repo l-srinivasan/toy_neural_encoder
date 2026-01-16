@@ -56,15 +56,15 @@ def train_tcn(x):
     return x, tcn
     
 class TransformerPredictNext(nn.Module):
-    def __init__(self, trained_tcn, d_model):
+    def __init__(self, tcn_trained, d_model):
         super().__init__()
 
-        self.tcn = trained_tcn
+        self.tcn = tcn_trained
         self.tcn.eval() # Freeze the TCN
         for param in self.tcn.parameters():
             param.requires_grad=False
 
-        self.transformer = TimeSeriesTransformer(trained_tcn, d_model=d_model)
+        self.transformer = TimeSeriesTransformer(tcn_trained, d_model=d_model)
         self.prediction_head = nn.Linear(d_model, d_model)
 
     def forward(self, x):
@@ -76,15 +76,14 @@ class TransformerPredictNext(nn.Module):
         preds = self.prediction_head(features)
         return preds
     
-def train_transformer(x, trained_tcn, device="cpu"):
+def train_transformer(x, tcn_trained, device="cpu"):
 
     # Prep input and target sequences
-    x = torch.tensor(x, dtype=torch.float32)
-    x_input = x[:,:,:-1].to(device)
+    x_input = x[:,:,:-1].to(device) # Assuming x is a tensor
     x_target = x[:,:,1:].to(device)
 
     # Instantiate model
-    mod = TransformerPredictNext(trained_tcn, 128).to(device)
+    mod = TransformerPredictNext(tcn_trained, 128).to(device)
     optimizer = torch.optim.Adam(mod.parameters())
     criterion = nn.MSELoss()
 
@@ -96,7 +95,7 @@ def train_transformer(x, trained_tcn, device="cpu"):
         # Generate target
         preds = mod(x_input)
         with torch.no_grad():
-            target_latent = trained_tcn(x_target)
+            target_latent = tcn_trained(x_target)
 
         # Calculate loss
         loss = criterion(preds, target_latent)
