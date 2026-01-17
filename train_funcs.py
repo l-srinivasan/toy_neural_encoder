@@ -19,6 +19,7 @@ class TCNPredictNext(nn.Module):
 
 def train_tcn(x):
 
+    print(f"Training TCN to predict next time series step...")
     # Prepare input data
     x = torch.tensor(x, dtype=torch.float32)
     x = x.unsqueeze(0) # Gives us [Batches, Channels, Timesteps] for the TCN
@@ -78,6 +79,7 @@ class TransformerPredictNext(nn.Module):
     
 def train_transformer(x, tcn_trained, device="cpu"):
 
+    print(f"Training Transformer to predict next latent...")
     # Prep input and target sequences
     x_input = x[:,:,:-1].to(device) # Assuming x is a tensor
     x_target = x[:,:,1:].to(device)

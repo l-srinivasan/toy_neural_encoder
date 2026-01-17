@@ -82,6 +82,7 @@ class TimeSeriesTransformer(nn.Module):
         for param in self.tcn.parameters():
             param.requires_grad = False # Prevent from further learning
 
+        self.d_model = d_model
         self.pos_embedding = nn.Embedding(timesteps, d_model)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model,
@@ -95,15 +96,18 @@ class TimeSeriesTransformer(nn.Module):
             num_layers=num_layers
         )
 
-    def forward(self, x):
+    def forward(self, z):
 
-        with torch.no_grad():
-            z = self.tcn(x)
+        # Verify shape
+        B, T, C = z.shape
+        assert z.shape[2] == self.d_model, f"Expected latent to have shape [B,T,C], but channel dimension has length {C}"
 
-        B, C, T = x.shape
-        position_indices = torch.arange(T).unsqueeze(0).expand(B,T) # Repeat the row B times
-        embed_from_idx = self.pos_embedding(position_indices)
-        z = z + embed_from_idx # Need to understand how to add positions like this
-        
+        # Create positional embedding
+        pos = torch.arange(T)
+        pos = pos.unsqueeze(0).expand(B,T) # Repeat the row B times
+        embed_from_idx = self.pos_embedding(pos)
+
+        # Append to latent for transformer
+        z = z + embed_from_idx
         encoding = self.transformer_encoder(z)
         return encoding
