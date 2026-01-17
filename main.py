@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from signal_utils import generate_synthetic_features, Signal
-import train_funcs, eval_funcs
+import model_utils, train_funcs, eval_funcs
 
 def main():
 
@@ -18,7 +18,7 @@ def main():
         data = generate_synthetic_features(num_elec, timesteps, fs)
     else: # Restrict to one band
         f = 50 # Sitting in the middle of low-gamma
-        num_channels = num_elec * 4 # Since we are not feeding each band in
+        num_channels = num_elec * 4 # Scale by 4 since we aren't feeding in bands as features
         raw_data = np.sin(2 * np.pi * f * t) + 0.5 * np.random.randn(num_channels, len(t))
 
         # Call Signal class, normalize and bandpass
@@ -33,11 +33,11 @@ def main():
 
     # Train the TCN to predict the next timestep
     load_tcn = True
-    tcn_path =  "tcn_frozen.pth"
-    x_path = "x_tensor.pth"
+    tcn_path =  "saved_params/tcn_frozen.pth"
+    x_path = "saved_params/x_tensor.pth"
 
     if load_tcn:
-        tcn_trained = eval_funcs.load_trained_tcn_weights(tcn_path)
+        tcn_trained = model_utils.load_trained_tcn_weights(tcn_path)
         x = torch.load(x_path, weights_only=True)
 
     else:
@@ -51,7 +51,16 @@ def main():
             eval_funcs.check_heatmap(x, tcn_trained)
 
     # Train the Transformer to predict the next latent
-    tf_trained = train_funcs.train_transformer(x, tcn_trained)
+    load_tf = False
+    tf_path = "saved_params/tf_frozen.pth"
+
+    if load_tf:
+        tf_trained = model_utils.load_trained_tf_weights(tf_path, tcn_trained)
+    else:
+        tf_trained = train_funcs.train_transformer(x, tcn_trained)
+        torch.save(tf_trained.state_dict(), tf_path)
+
+    latent = tf_trained(x) # latent has shape [B, T, 128]; we do not want to compress temporal information
 
 if __name__ == "__main__":
     main()

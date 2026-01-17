@@ -70,7 +70,7 @@ class TimeSeriesTransformer(nn.Module):
         trained_tcn, 
         d_model=128, 
         timesteps=1000,
-        nhead=4,
+        nhead=4, # Multi-head self-attention
         num_layers=4,
         dim_feedforward=512,
         dropout=0.1

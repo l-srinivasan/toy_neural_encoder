@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 
-from models import ThreeLayerTCN
+from models import ThreeLayerTCN, TimeSeriesTransformer
 
 def load_trained_tcn_weights(path):
 
@@ -12,6 +12,12 @@ def load_trained_tcn_weights(path):
     tcn.load_state_dict(state_dict)
     return tcn
 
+def load_trained_tf_weights(path, tcn_trained):
+    
+    tf = TimeSeriesTransformer(tcn_trained, 128)
+    state_dict = torch.load(path, weights_only=True)
+    tf.load_state_dict(state_dict)
+    return tf
 
 def check_latent_feature(x, tcn_trained):
 
