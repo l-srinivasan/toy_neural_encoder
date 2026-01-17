@@ -17,11 +17,11 @@ class TCNPredictNext(nn.Module):
         preds = self.prediction_head(features)
         return preds # In [Batches, Timesteps, Channels=out_channels]
 
-def train_tcn(x):
+def train_tcn(raw_data):
 
     print(f"Training TCN to predict next time series step...")
     # Prepare input data
-    x = torch.tensor(x, dtype=torch.float32)
+    x = torch.tensor(raw_data, dtype=torch.float32)
     x = x.unsqueeze(0) # Gives us [Batches, Channels, Timesteps] for the TCN
 
     # Include/exclude next timestep
@@ -54,35 +54,30 @@ def train_tcn(x):
     # Freeze weights
     for param in tcn.parameters():
         param.requires_grad = False
-    return x, tcn
+
+    # Return Latent
+    with torch.no_grad():
+        z = tcn(x)
+    return x, z, tcn
     
 class TransformerPredictNext(nn.Module):
     def __init__(self, tcn_trained, d_model):
         super().__init__()
 
-        self.tcn = tcn_trained
-        self.tcn.eval() # Freeze the TCN
-        for param in self.tcn.parameters():
-            param.requires_grad=False
-
         self.transformer = TimeSeriesTransformer(tcn_trained, d_model=d_model)
         self.prediction_head = nn.Linear(d_model, d_model)
 
-    def forward(self, x):
-
-        with torch.no_grad():
-            z = self.tcn(x)
-        
+    def forward(self, z):
         features = self.transformer(z)
         preds = self.prediction_head(features)
         return preds
     
-def train_transformer(x, tcn_trained, device="cpu"):
+def train_transformer(z, tcn_trained, device="cpu"):
 
     print(f"Training Transformer to predict next latent...")
     # Prep input and target sequences
-    x_input = x[:,:,:-1].to(device) # Assuming x is a tensor
-    x_target = x[:,:,1:].to(device)
+    z_input = z[:,:-1,:].to(device) # Assuming z is a tensor
+    target_latent = z[:,1:,:].to(device)
 
     # Instantiate model
     mod = TransformerPredictNext(tcn_trained, 128).to(device)
@@ -95,9 +90,7 @@ def train_transformer(x, tcn_trained, device="cpu"):
         optimizer.zero_grad() # Restrict gradients from accum. across epochs
         
         # Generate target
-        preds = mod(x_input)
-        with torch.no_grad():
-            target_latent = tcn_trained(x_target)
+        preds = mod(z_input)
 
         # Calculate loss
         loss = criterion(preds, target_latent)
@@ -108,4 +101,9 @@ def train_transformer(x, tcn_trained, device="cpu"):
         if ((epoch+1) % 10) == 0:
             print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():6f}")
 
-    return mod
+    mod.eval()
+    for param in mod.parameters():
+        param.requires_grad = False
+    
+    latent = mod.transformer(z)
+    return mod.transformer, latent

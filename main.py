@@ -36,15 +36,18 @@ def main():
     load_tcn = True
     tcn_path =  "saved_params/tcn_frozen.pth"
     x_path = "saved_params/x_tensor.pth"
+    z_path = "saved_params/z_tensor.pth"
 
     if load_tcn:
         tcn_trained = model_utils.load_trained_tcn_weights(tcn_path)
         x = torch.load(x_path, weights_only=True)
+        z = torch.load(z_path, weights_only=True)
 
     else:
-        x, tcn_trained = train_funcs.train_tcn(data)
+        x, z, tcn_trained = train_funcs.train_tcn(data)
         torch.save(tcn_trained.state_dict(), tcn_path)
         torch.save(x, x_path)
+        torch.save(z, z_path)
 
         check_latent = False
         if check_latent:
@@ -54,16 +57,16 @@ def main():
     # Train the Transformer to predict the next latent
     load_tf = True
     tf_path = "saved_params/tf_frozen.pth"
+    latent_path = "saved_params/latent_tensor.pth"
 
     if load_tf:
         tf_trained = model_utils.load_trained_tf_weights(tf_path, tcn_trained)
+        latent = torch.load(latent_path, weights_only=True)
 
     else:
-        tf_trained = train_funcs.train_transformer(x, tcn_trained)
+        tf_trained, latent = train_funcs.train_transformer(z, tcn_trained)
         torch.save(tf_trained.state_dict(), tf_path)
-
-    # Generate latent encoded state
-    latent = tf_trained(x) # latent has shape [B, T, 128]; we do not want to compress temporal information
+        torch.save(latent, latent_path)
 
 if __name__ == "__main__":
     main()

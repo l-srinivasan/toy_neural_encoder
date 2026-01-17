@@ -92,7 +92,8 @@ class TimeSeriesTransformer(nn.Module):
             batch_first=True
         )
 
-        self.transformer_encoder=nn.TransformerEncoder(encoder_layer, 
+        self.transformer_encoder=nn.TransformerEncoder(
+            encoder_layer, 
             num_layers=num_layers
         )
 
