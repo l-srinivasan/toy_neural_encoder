@@ -16,6 +16,7 @@ def main():
     # Create across feature engineered bands or restrict to one band
     if not single_band:
         data = generate_synthetic_features(num_elec, timesteps, fs)
+
     else: # Restrict to one band
         f = 50 # Sitting in the middle of low-gamma
         num_channels = num_elec * 4 # Scale by 4 since we aren't feeding in bands as features
@@ -51,15 +52,17 @@ def main():
             eval_funcs.check_heatmap(x, tcn_trained)
 
     # Train the Transformer to predict the next latent
-    load_tf = False
+    load_tf = True
     tf_path = "saved_params/tf_frozen.pth"
 
     if load_tf:
         tf_trained = model_utils.load_trained_tf_weights(tf_path, tcn_trained)
+
     else:
         tf_trained = train_funcs.train_transformer(x, tcn_trained)
         torch.save(tf_trained.state_dict(), tf_path)
 
+    # Generate latent encoded state
     latent = tf_trained(x) # latent has shape [B, T, 128]; we do not want to compress temporal information
 
 if __name__ == "__main__":
